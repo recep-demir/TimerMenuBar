@@ -6,14 +6,24 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		26C0C08C2F2EA996008195FF /* README.md in Resources */ = {isa = PBXBuildFile; fileRef = 26C0C08A2F2EA98B008195FF /* README.md */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXFileReference section */
 		260350442F141BFD007B1E80 /* PrayerTimer.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = PrayerTimer.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		26C0C08A2F2EA98B008195FF /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		260350462F141BFD007B1E80 /* PrayerTimer */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			path = PrayerTimer;
+			sourceTree = "<group>";
+		};
+		26C0C0982F2EB064008195FF /* Requirements */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = Requirements;
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
@@ -34,6 +44,8 @@
 			children = (
 				260350462F141BFD007B1E80 /* PrayerTimer */,
 				260350452F141BFD007B1E80 /* Products */,
+				26C0C08A2F2EA98B008195FF /* README.md */,
+				26C0C0982F2EB064008195FF /* Requirements */,
 			);
 			sourceTree = "<group>";
 		};
@@ -62,6 +74,7 @@
 			);
 			fileSystemSynchronizedGroups = (
 				260350462F141BFD007B1E80 /* PrayerTimer */,
+				26C0C0982F2EB064008195FF /* Requirements */,
 			);
 			name = PrayerTimer;
 			packageProductDependencies = (
@@ -109,6 +122,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				26C0C08C2F2EA996008195FF /* README.md in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
