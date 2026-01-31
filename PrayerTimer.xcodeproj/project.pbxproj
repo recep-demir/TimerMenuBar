@@ -21,9 +21,9 @@
 			path = PrayerTimer;
 			sourceTree = "<group>";
 		};
-		26C0C0982F2EB064008195FF /* Requirements */ = {
+		26C0C0982F2EB064008195FF /* requirements */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
-			path = Requirements;
+			path = requirements;
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
@@ -45,7 +45,7 @@
 				260350462F141BFD007B1E80 /* PrayerTimer */,
 				260350452F141BFD007B1E80 /* Products */,
 				26C0C08A2F2EA98B008195FF /* README.md */,
-				26C0C0982F2EB064008195FF /* Requirements */,
+				26C0C0982F2EB064008195FF /* requirements */,
 			);
 			sourceTree = "<group>";
 		};
@@ -74,7 +74,7 @@
 			);
 			fileSystemSynchronizedGroups = (
 				260350462F141BFD007B1E80 /* PrayerTimer */,
-				26C0C0982F2EB064008195FF /* Requirements */,
+				26C0C0982F2EB064008195FF /* requirements */,
 			);
 			name = PrayerTimer;
 			packageProductDependencies = (
