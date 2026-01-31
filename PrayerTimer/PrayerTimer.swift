@@ -10,35 +10,27 @@ struct PrayerTimerApp: App {
     
     var body: some Scene {
         MenuBarExtra {
-            // --- 1. Bölüm: Bilgi Alanı (Parlak Ama Tepkisiz) ---
-            VStack(alignment: .leading, spacing: 4) {
-                // ŞEHİR
+            // --- 1. Bölüm: Bilgi Alanı ---
+            VStack(alignment: .leading, spacing: 6) {
+                
+                // KONUM: Parlak kalması için disabled buton olarak bırakıldı
                 Button(action: {}) {
                     Text(timerManager.cityDisplay)
                         .font(.headline)
-                        // .primary rengini zorluyoruz
                         .foregroundStyle(.primary)
                 }
-                .buttonStyle(.plain) // Buton arka planını kaldırır
-                .disabled(true)      // Tıklanmayı engeller (Mouse tepki vermez)
+                .buttonStyle(.plain)
+                .disabled(false)
                 
-                // TARİH (Miladi)
-                Button(action: {}) {
-                    Text(timerManager.gregorianDateString)
-                        .font(.caption)
-                        .foregroundStyle(.primary)
+                // TARİHLER: Yan yana ve normal text formatında
+                
+                HStack(spacing: 5) {
+                    Text("\(timerManager.gregorianDateString) - \(timerManager.hijriDateString)")
+                        .lineLimit(1) // Alt satıra geçmesini engeller
                 }
-                .buttonStyle(.plain)
-                .disabled(true)
-
-                // TARİH (Hicri)
-                Button(action: {}) {
-                    Text(timerManager.hijriDateString)
-                        .font(.caption)
-                        .foregroundStyle(.primary)
-                }
-                .buttonStyle(.plain)
-                .disabled(true)
+                .font(.caption)
+                .foregroundStyle(.primary)
+                .padding(.horizontal, 4)
             }
             .padding(.horizontal, 10)
             .padding(.vertical, 5)
@@ -50,11 +42,11 @@ struct PrayerTimerApp: App {
                 Button(action: {}) {
                     Text("\(timerManager.nextEventDisplayName) \(timerManager.timeRemainingString)")
                         .font(.body)
-                        .fontWeight(.medium)
+                        .fontWeight(.semibold)
                         .foregroundStyle(.primary)
                 }
                 .buttonStyle(.plain)
-                .disabled(true)
+                .allowsHitTesting(false)
             } else {
                 Text("Veri Alınıyor...")
             }
@@ -78,11 +70,10 @@ struct PrayerTimerApp: App {
                         set: { timerManager.updateSetting(for: apiKey, onTime: $0) }
                     ))
                 } label: {
-                    // Burası interaktif kalmalı, o yüzden normal Label
                     Label {
                         Text("\(displayName): \(time)")
                             .fontWeight(isCurrent ? .heavy : .regular)
-                            .foregroundStyle(isCurrent ? .primary : .primary)
+                            .foregroundStyle(.primary)
                     } icon: {
                         Image(systemName: iconName)
                     }
@@ -113,7 +104,6 @@ struct PrayerTimerApp: App {
                 }
             }
         }
-        // .menuBarExtraStyle(.window) KODUNU KALDIRDIK (Standart Menüye Dönüş)
     }
     
     func openSettingsWindow() {
@@ -174,7 +164,6 @@ struct SettingsView: View {
     }
 }
 
-// MARK: - Manager
 @MainActor
 class PrayerTimerManager: ObservableObject {
     @Published var menuBarText: String = ""
@@ -198,14 +187,13 @@ class PrayerTimerManager: ObservableObject {
     let displayNames = ["İmsak", "Güneş", "Öğle", "İkindi", "Akşam", "Yatsı"]
     private let apiKeyOrder = ["Fajr", "Sunrise", "Dhuhr", "Asr", "Maghrib", "Isha"]
     
-    // İKON: Yatsı = moon.phase.waning.crescent
     private let iconMap = [
         "Fajr": "moon.stars.fill",
         "Sunrise": "sunrise.fill",
         "Dhuhr": "sun.max.fill",
         "Asr": "sun.haze.fill",
         "Maghrib": "sunset.fill",
-        "Isha": "moon.phase.waning.crescent"
+        "Isha": "moon"
     ]
     
     private var timer: Timer?
@@ -224,8 +212,6 @@ class PrayerTimerManager: ObservableObject {
             }
         }
     }
-    
-    // MARK: - Location Logic
     
     func searchLocation(query: String) async {
         guard !query.isEmpty else { return }
@@ -303,12 +289,9 @@ class PrayerTimerManager: ObservableObject {
             
             let day = calendar.component(.day, from: date)
             if let todayData = response.data.first(where: { Int($0.date.gregorian.day) == day }) {
-                
                 UserDefaults.standard.set(todayData.timings, forKey: "timings")
-                
                 self.gregorianDateString = todayData.date.readable
                 self.hijriDateString = "\(todayData.date.hijri.day) \(todayData.date.hijri.month.en) \(todayData.date.hijri.year)"
-                
                 scheduleAllNotifications()
                 updateDisplay()
             }
@@ -317,8 +300,6 @@ class PrayerTimerManager: ObservableObject {
         }
     }
 
-    // MARK: - Display Logic
-    
     func updateDisplay() {
         guard let timings = UserDefaults.standard.dictionary(forKey: "timings") as? [String: String] else { return }
         let now = Date()
@@ -398,10 +379,7 @@ class PrayerTimerManager: ObservableObject {
     }
     
     func getIconName(for apiKey: String) -> String { return iconMap[apiKey] ?? "clock" }
-    
-    func getApiKey(for displayName: String) -> String {
-        return eventMapping.first(where: { $1 == displayName })?.key ?? ""
-    }
+    func getApiKey(for displayName: String) -> String { return eventMapping.first(where: { $1 == displayName })?.key ?? "" }
     
     private func getSuffix(for name: String) -> String {
         switch name {
