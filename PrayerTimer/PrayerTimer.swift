@@ -10,23 +10,21 @@ struct PrayerTimerApp: App {
     
     var body: some Scene {
         MenuBarExtra {
-            // --- 1. Bölüm: Bilgi Alanı ---
+            // --- 1. Bölüm: Bilgi Alanı (Parlak Ama Tepkisiz) ---
             VStack(alignment: .leading, spacing: 6) {
                 
-                // KONUM: Parlak kalması için disabled buton olarak bırakıldı
+                // KONUM: Parlak kalması için disabled buton
                 Button(action: {}) {
                     Text(timerManager.cityDisplay)
                         .font(.headline)
                         .foregroundStyle(.primary)
                 }
                 .buttonStyle(.plain)
-                .disabled(false)
+                .allowsHitTesting(false)
                 
                 // TARİHLER: Yan yana ve normal text formatında
-                
                 HStack(spacing: 5) {
                     Text("\(timerManager.gregorianDateString) - \(timerManager.hijriDateString)")
-                        .lineLimit(1) // Alt satıra geçmesini engeller
                 }
                 .font(.caption)
                 .foregroundStyle(.primary)
@@ -87,6 +85,7 @@ struct PrayerTimerApp: App {
                 openSettingsWindow()
             }
             
+            // Buton isteğin üzerine KALDI (Manuel tetikleme için)
             Button("Vakitleri Güncelle") {
                 Task { await timerManager.refreshData() }
             }
@@ -164,6 +163,7 @@ struct SettingsView: View {
     }
 }
 
+// MARK: - Manager
 @MainActor
 class PrayerTimerManager: ObservableObject {
     @Published var menuBarText: String = ""
@@ -182,6 +182,9 @@ class PrayerTimerManager: ObservableObject {
     
     @Published var currentEventApiKey: String = ""
     @Published var settings: [String: PrayerSetting] = [:]
+    
+    // OTO REFRESH İÇİN EKLENDİ: Son güncelleme tarihini tutar
+    private var lastFetchDate: Date = Date()
     
     private let eventMapping = ["Fajr": "İmsak", "Sunrise": "Güneş", "Dhuhr": "Öğle", "Asr": "İkindi", "Maghrib": "Akşam", "Isha": "Yatsı"]
     let displayNames = ["İmsak", "Güneş", "Öğle", "İkindi", "Akşam", "Yatsı"]
@@ -206,9 +209,18 @@ class PrayerTimerManager: ObservableObject {
         requestNotificationPermission()
         Task { await refreshData() }
         
+        // Timer içine OTO REFRESH kontrolü eklendi
         timer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] _ in
             Task { @MainActor [weak self] in
-                self?.updateDisplay()
+                guard let self = self else { return }
+                self.updateDisplay()
+                
+                // GÜNLÜK KONTROL: Eğer son güncelleme tarihi "Bugün" değilse, yenile.
+                if !Calendar.current.isDateInToday(self.lastFetchDate) {
+                    print("Gece yarısı/Gün değişimi algılandı. Vakitler güncelleniyor...")
+                    self.lastFetchDate = Date() // Döngüye girmesin diye tarihi hemen güncelle
+                    await self.refreshData()
+                }
             }
         }
     }
@@ -252,6 +264,8 @@ class PrayerTimerManager: ObservableObject {
     
     func refreshData() async {
         loadStoredLocation(fetchFresh: true)
+        // Manuel butona basıldığında da tarihi güncelle ki tekrar tetiklenmesin
+        self.lastFetchDate = Date()
     }
     
     private func loadStoredLocation(fetchFresh: Bool) {
@@ -294,6 +308,9 @@ class PrayerTimerManager: ObservableObject {
                 self.hijriDateString = "\(todayData.date.hijri.day) \(todayData.date.hijri.month.en) \(todayData.date.hijri.year)"
                 scheduleAllNotifications()
                 updateDisplay()
+                
+                // Başarılı olursa tarihi tekrar teyit et
+                self.lastFetchDate = Date()
             }
         } catch {
             print("API Error: \(error)")
