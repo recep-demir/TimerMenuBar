@@ -129,25 +129,30 @@ struct PrayerTimerApp: App {
     func openSettingsWindow() {
         let title = timerManager.t(.settingsTitle)
         
+        // 1. Pencere zaten varsa onu bul ve ÖNE GETİR
         if let window = NSApp.windows.first(where: { $0.title == title || $0.title == "Settings" || $0.title == "Ayarlar" || $0.title == "Einstellungen" }) {
             window.title = title
-            window.makeKeyAndOrderFront(nil)
+            window.makeKeyAndOrderFront(nil) // Görünür yap
+            window.orderFrontRegardless()    // Diğer pencerelerin önüne zorla
+            NSApp.activate(ignoringOtherApps: true) // Uygulamayı aktif et (En önemli kısım burası)
             return
         }
         
+        // 2. Pencere yoksa yeni oluştur
         let window = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 420, height: 350),
+            contentRect: NSRect(x: 0, y: 0, width: 480, height: 350), // Genişlik güncel SettingsView'a göre ayarlandı
             styleMask: [.titled, .closable, .miniaturizable],
             backing: .buffered, defer: false)
         window.center()
         window.title = title
         window.isReleasedWhenClosed = false
         window.contentView = NSHostingView(rootView: SettingsView(manager: timerManager))
+        
         window.makeKeyAndOrderFront(nil)
-        NSApp.activate(ignoringOtherApps: true)
+        window.orderFrontRegardless() // Öne zorla
+        NSApp.activate(ignoringOtherApps: true) // Uygulamayı aktif et
     }
 }
-
 // MARK: - Settings View
 // MARK: - Settings View
 struct SettingsView: View {
