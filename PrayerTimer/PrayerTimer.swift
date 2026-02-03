@@ -3,7 +3,7 @@ import Combine
 import Foundation
 import UserNotifications
 import CoreLocation
-import ServiceManagement
+import ServiceManagement // YENİ: Başlangıçta çalıştırma için gerekli
 
 // MARK: - Enums & Models
 enum AppLanguage: String, CaseIterable, Identifiable {
@@ -18,7 +18,7 @@ struct CalculationMethod: Identifiable, Hashable {
     let name: String
 }
 
-// Çeviri Anahtarları (Kod içinde karmaşa olmasın diye)
+// Çeviri Anahtarları
 enum L10n: String {
     case settingsTitle, locationTitle, generalTitle, language, method, methodNote
     case searchPlaceholder, searchBtn, currentLoc, notFound, searching, found
@@ -26,6 +26,7 @@ enum L10n: String {
     case reminderPre, reminderOnTime
     case timeRemainingHours, timeRemainingMins, timeRemainingLeft
     case notificationPreBody, notificationNowBody
+    case launchAtLogin // YENİ: Çeviri anahtarı eklendi
 }
 
 @main
@@ -126,8 +127,6 @@ struct PrayerTimerApp: App {
     }
     
     func openSettingsWindow() {
-        // Eğer pencere zaten açıksa öne getir, yoksa yeni oluştur
-        // Not: Bu basit yaklaşımda başlık statik kalabilir, dinamik başlık için NSWindow subclass gerekir ama içerik dinamik değişecektir.
         let title = timerManager.t(.settingsTitle)
         
         if let window = NSApp.windows.first(where: { $0.title == title || $0.title == "Settings" || $0.title == "Ayarlar" || $0.title == "Einstellungen" }) {
@@ -150,41 +149,72 @@ struct PrayerTimerApp: App {
 }
 
 // MARK: - Settings View
+// MARK: - Settings View
 struct SettingsView: View {
     @ObservedObject var manager: PrayerTimerManager
     @State private var searchInput: String = ""
     
     var body: some View {
         TabView {
-            // TAB 1: GENEL
-            Form {
-                Section(header: Text(manager.t(.generalTitle)).font(.headline)) {
+            // TAB 1: GENEL (Düzenlendi)
+            VStack(alignment: .leading, spacing: 25) { // 25 birim boşluk ve sola hizalama
+                
+                // 1. Başlangıçta Çalıştır
+                Toggle(manager.t(.launchAtLogin), isOn: Binding(
+                    get: { SMAppService.mainApp.status == .enabled },
+                    set: { newValue in
+                        do {
+                            if newValue {
+                                try SMAppService.mainApp.register()
+                            } else {
+                                try SMAppService.mainApp.unregister()
+                            }
+                        } catch {
+                            print("Launch at login error: \(error)")
+                        }
+                    }
+                ))
+                .font(.body)
+                
+                Divider() // Görsel ayrım için çizgi
+                
+                // 2. Ayarlar Grubu
+                VStack(alignment: .leading, spacing: 15) {
                     
+                    // Dil Seçimi
                     Picker(manager.t(.language), selection: $manager.selectedLanguage) {
                         ForEach(AppLanguage.allCases) { lang in
                             Text(lang.rawValue).tag(lang)
                         }
                     }
                     .pickerStyle(.menu)
+                    .frame(width: 300) // Picker'ın çok uzamasını engellemek için
                     
-                    Picker(manager.t(.method), selection: $manager.selectedMethodId) {
-                        ForEach(manager.availableMethods) { method in
-                            Text(method.name).tag(method.id)
+                    // Hesaplama Yöntemi
+                    VStack(alignment: .leading, spacing: 5) {
+                        Picker(manager.t(.method), selection: $manager.selectedMethodId) {
+                            ForEach(manager.availableMethods) { method in
+                                Text(method.name).tag(method.id)
+                            }
                         }
+                        .pickerStyle(.menu)
+                        .frame(width: 380) // Metinler uzun olduğu için biraz daha geniş
+                        
+                        Text(manager.t(.methodNote))
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                            .padding(.leading, 5) // Hafif içerden başlasın
                     }
-                    .pickerStyle(.menu)
-                    
-                    Text(manager.t(.methodNote))
-                        .font(.caption)
-                        .foregroundColor(.secondary)
                 }
+                
+                Spacer() // Tüm içeriği yukarı itmek için en alta boşluk
             }
-            .padding()
+            .padding(30) // Kenarlardan içeri boşluk
             .tabItem {
                 Label(manager.t(.generalTitle), systemImage: "gearshape")
             }
             
-            // TAB 2: KONUM
+            // TAB 2: KONUM (Aynı kaldı)
             VStack(alignment: .leading, spacing: 15) {
                 Text(manager.t(.locationTitle))
                     .font(.headline)
@@ -218,12 +248,12 @@ struct SettingsView: View {
                     .font(.footnote)
                     .foregroundColor(.secondary)
             }
-            .padding()
+            .padding(30)
             .tabItem {
                 Label(manager.t(.locationTitle), systemImage: "location")
             }
         }
-        .frame(width: 420, height: 350)
+        .frame(width: 480, height: 350) // Pencereyi biraz genişlettim ki method isimleri sığsın
     }
 }
 
@@ -250,9 +280,8 @@ class PrayerTimerManager: ObservableObject {
     @Published var selectedLanguage: AppLanguage = .tr {
         didSet {
             UserDefaults.standard.set(selectedLanguage.rawValue, forKey: "app_language")
-            // Dil değişince anında güncelle
             updateDisplay()
-            scheduleAllNotifications() // Bildirim metinlerini yeni dile göre güncelle
+            scheduleAllNotifications()
         }
     }
     
@@ -279,7 +308,8 @@ class PrayerTimerManager: ObservableObject {
             .updateBtn: "Vakitleri Güncelle", .quitBtn: "Çıkış", .loading: "Yükleniyor...",
             .reminderPre: "35 Dakika Önce Hatırlat", .reminderOnTime: "Vaktinde Hatırlat",
             .timeRemainingHours: "sa", .timeRemainingMins: "dk", .timeRemainingLeft: "kaldı",
-            .notificationPreBody: "Vakte 35 dk kaldı.", .notificationNowBody: "Vakit girdi."
+            .notificationPreBody: "Vakte 35 dk kaldı.", .notificationNowBody: "Vakit girdi.",
+            .launchAtLogin: "Başlangıçta Çalıştır" // YENİ
         ],
         .en: [
             .settingsTitle: "Settings", .locationTitle: "Location", .generalTitle: "General",
@@ -290,7 +320,8 @@ class PrayerTimerManager: ObservableObject {
             .updateBtn: "Refresh Times", .quitBtn: "Quit", .loading: "Loading...",
             .reminderPre: "Remind 35 Min Before", .reminderOnTime: "Remind On Time",
             .timeRemainingHours: "h", .timeRemainingMins: "m", .timeRemainingLeft: "left",
-            .notificationPreBody: "35 min remaining.", .notificationNowBody: "Time is now."
+            .notificationPreBody: "35 min remaining.", .notificationNowBody: "Time is now.",
+            .launchAtLogin: "Launch at Login" // YENİ
         ],
         .de: [
             .settingsTitle: "Einstellungen", .locationTitle: "Standort", .generalTitle: "Allgemein",
@@ -301,7 +332,8 @@ class PrayerTimerManager: ObservableObject {
             .updateBtn: "Zeiten aktualisieren", .quitBtn: "Beenden", .loading: "Laden...",
             .reminderPre: "35 Min. vorher erinnern", .reminderOnTime: "Pünktlich erinnern",
             .timeRemainingHours: "Std", .timeRemainingMins: "Min", .timeRemainingLeft: "verbleibend",
-            .notificationPreBody: "Noch 35 Min.", .notificationNowBody: "Die Zeit ist gekommen."
+            .notificationPreBody: "Noch 35 Min.", .notificationNowBody: "Die Zeit ist gekommen.",
+            .launchAtLogin: "Beim Start öffnen" // YENİ
         ]
     ]
     
@@ -350,7 +382,7 @@ class PrayerTimerManager: ObservableObject {
         
         loadSettings()
         loadStoredLocation(fetchFresh: false)
-        updateDisplay() // İlk açılışta çevirileri uygula
+        updateDisplay()
         
         requestNotificationPermission()
         Task { await refreshData() }
@@ -367,7 +399,6 @@ class PrayerTimerManager: ObservableObject {
         }
     }
     
-    // --- ÇEVİRİ FONKSİYONU ---
     func t(_ key: L10n) -> String {
         return translations[selectedLanguage]?[key] ?? ""
     }
@@ -453,7 +484,7 @@ class PrayerTimerManager: ObservableObject {
 
     func updateDisplay() {
         guard let timings = UserDefaults.standard.dictionary(forKey: "timings") as? [String: String] else {
-            self.cityDisplay = t(.loading) // İlk yüklemede loading çevirisini göster
+            self.cityDisplay = t(.loading)
             return
         }
         let now = Date()
@@ -489,7 +520,6 @@ class PrayerTimerManager: ObservableObject {
             
             self.nextEventDisplayName = "\(nextName)\(suffix)"
             
-            // "3 sa 12 dk kaldı" yapısını dile göre kur
             let hStr = t(.timeRemainingHours)
             let mStr = t(.timeRemainingMins)
             let leftStr = t(.timeRemainingLeft)
@@ -506,7 +536,7 @@ class PrayerTimerManager: ObservableObject {
             
             if diff <= 3600 {
                 let minsLeft = (diff / 60) + 1
-                self.menuBarText = "\(minsLeft) \(mStr)" // "12 dk"
+                self.menuBarText = "\(minsLeft) \(mStr)"
                 self.shouldShowCountdown = true
             } else {
                 self.menuBarText = ""
@@ -549,7 +579,7 @@ class PrayerTimerManager: ObservableObject {
         guard let timings = UserDefaults.standard.dictionary(forKey: "timings") as? [String: String] else { return }
         
         for apiKey in apiKeyOrder {
-            let displayName = getLocalizedTimeName(for: apiKey) // Bildirim başlığı lokalize
+            let displayName = getLocalizedTimeName(for: apiKey)
             
             guard let timeStr = timings[apiKey], let pDate = parseTime(timeStr), let setting = settings[apiKey] else { continue }
             let today = Calendar.current.startOfDay(for: Date())
@@ -559,7 +589,6 @@ class PrayerTimerManager: ObservableObject {
             
             if setting.preReminder {
                 let triggerDate = fullDate.addingTimeInterval(-TimeInterval(setting.preMinutes * 60))
-                // Bildirim gövdesi lokalize
                 if triggerDate > Date() { sendNotification(id: "\(apiKey)_pre", title: displayName, body: t(.notificationPreBody), date: triggerDate) }
             }
             if setting.onTime && fullDate > Date() { sendNotification(id: "\(apiKey)_now", title: displayName, body: t(.notificationNowBody), date: fullDate) }
